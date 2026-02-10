@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#fd5e11"         # Laranja Paciente 360
+backgroundColor = "#ffffff"       # Fundo branco (Minimalista)
+secondaryBackgroundColor = "#1e3a5f" # Azul Marinho (Sidebar)
+textColor = "#1e3a5f"             # Texto em Azul Escuro
+font = "sans serif"

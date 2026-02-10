@@ -1,0 +1,27 @@
+{
+  "name": "streamlit-enamed",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dump": "npx @stlite/desktop dump",
+    "dist": "npx @stlite/desktop dist"
+  },
+  "stlite": {
+    "desktop": {
+      "entrypoint": "app_enamed.py",
+      "files": [
+        "app_enamed.py",
+        "base_alunos.csv",
+        "base_gabarito.csv",
+        "base_mapeamento.xlsx"
+      ],
+      "dependencies": [
+        "streamlit",
+        "pandas",
+        "plotly",
+        "xlsxwriter",
+        "openpyxl"
+      ]
+    }
+  }
+}

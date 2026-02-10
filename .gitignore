@@ -1,0 +1,12 @@
+# Ambientes Virtuais (ajuste se sua pasta tiver outro nome)
+venv/
+.venv/
+env/
+.env
+
+# Arquivos compilados do Python
+__pycache__/
+*.py[cod]
+
+# Arquivos do Streamlit
+.streamlit/
