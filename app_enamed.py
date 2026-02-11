@@ -330,8 +330,8 @@ def gerar_pdf_teaser(ies_nome, municipio, uf, conceito, media_ies, media_nac, me
         # 2. ESPAÇAMENTO ENTRE TABELAS AUMENTADO (De 3 para 8)
         pdf.ln(8)
 
-    desenhar_tabela_visual("3. Top 5 temas de pior desempenho", top_gaps, (200, 0, 0), aplicar_blur=False)
-    desenhar_tabela_visual("4. Top 5 temas de melhor desempenho", top_strengths, (0, 128, 0), aplicar_blur=True)
+    desenhar_tabela_visual("3. Pontos Críticos: 5 temas com maior defasagem", top_gaps, (200, 0, 0), aplicar_blur=False)
+    desenhar_tabela_visual("4. Destaques: 5 temas com melhor desempenho frente à média nacional", top_strengths, (0, 128, 0), aplicar_blur=True)
     
     # ==============================================================================
     # ÁREA DE APRESENTAÇÃO
@@ -519,11 +519,10 @@ def gerar_pdf_teaser(ies_nome, municipio, uf, conceito, media_ies, media_nac, me
     
     # Configuração da Fonte (Navy, Itálico ou Normal, tamanho médio)
     pdf.set_text_color(*navy)
-    pdf.set_font('Helvetica', 'B', 10) # B = Bold (Negrito). Use 'I' para Itálico se preferir.
+    pdf.set_font('Helvetica', 'I', 10) # B = Bold (Negrito). Use 'I' para Itálico se preferir.
     
     # A FRASE QUE VOCÊ QUER INSERIR:
     frase_abaixo_logo = "O saber médico na era da inovação" 
-    
     pdf.cell(210, 6, sanitizar_texto(frase_abaixo_logo), 0, 0, 'C')
 
 
