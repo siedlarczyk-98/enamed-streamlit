@@ -174,22 +174,33 @@ def gerar_pdf_teaser(ies_nome, municipio, uf, conceito, media_ies, media_nac, me
     
     navy = (30, 58, 95); orange = (253, 94, 17); grey = (240, 240, 240)
     
-    # ==============================================================================
+   # ==============================================================================
     # PÁGINA 1
     # ==============================================================================
     pdf.set_fill_color(*navy); pdf.rect(0, 0, 210, 40, 'F')
     pdf.set_xy(15, 10); pdf.set_font('Helvetica', 'B', 18); pdf.set_text_color(255)
     pdf.cell(0, 8, sanitizar_texto('Diagnóstico Microdados ENAMED 2025'), 0, 1, 'L')
     pdf.set_xy(15, 19); pdf.set_font('Helvetica', 'B', 11)
-    pdf.cell(0, 6, sanitizar_texto(f'IES: {ies_nome[:60]}'), 0, 1, 'L')
+    pdf.cell(0, 6, sanitizar_texto(f'IES: {ies_nome[:60]}...'), 0, 1, 'L')
     pdf.set_xy(15, 25); pdf.set_font('Helvetica', '', 9)
     pdf.cell(0, 6, sanitizar_texto(f"{municipio}/{uf}  |  Conceito ENAMED: {conceito}"), 0, 1, 'L')
     
     path_logo = os.path.join(os.path.dirname(__file__), "logo_branca.png")
     if os.path.exists(path_logo): pdf.image(path_logo, x=165, y=10, w=30)
     
-    pdf.set_y(45); pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 14); pdf.set_x(15)
+    # --- NOVO: DISCLAIMER / FRASE INICIAL ---
+    # Posicionado logo abaixo do cabeçalho azul (Y=42)
+    pdf.set_y(42); pdf.set_x(15)
+    pdf.set_font('Helvetica', 'I', 8); pdf.set_text_color(100, 100, 100) # Cinza e Itálico
+    
+    # Edite sua frase aqui:
+    disclaimer_text = "Este relatório apresenta uma análise baseada nos microdados ENAMED 2025 da instituição. De caráter diagnóstico, o documento elucida forças e fragilidades, e os indicadores apresentados visam apoiar a gestão pedagógica e o direcionamento estratégico."
+    pdf.multi_cell(180, 4, sanitizar_texto(disclaimer_text), 0, 'L')
+    
+    # --- SEÇÃO 1: PERFORMANCE (Ajustada para Y=52 para dar espaço ao disclaimer) ---
+    pdf.set_y(60); pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 14); pdf.set_x(15)
     pdf.cell(0, 8, sanitizar_texto('1. Performance Comparativa'), 0, 1, 'L')
+    
     y_c = pdf.get_y() + 2; w_c = 57.3; h_c = 25; gap = 4
     pdf.set_fill_color(*grey); pdf.rect(15, y_c, w_c, h_c, 'F')
     pdf.set_xy(15, y_c+4); pdf.set_font('Helvetica', '', 8); pdf.set_text_color(80)
@@ -209,30 +220,41 @@ def gerar_pdf_teaser(ies_nome, municipio, uf, conceito, media_ies, media_nac, me
     pdf.set_xy(15, y_c+h_c+2); pdf.set_font('Helvetica', 'I', 7); pdf.set_text_color(100)
     pdf.multi_cell(180, 3, sanitizar_texto(f"Comparativo da média de acertos de alunos vs Média Nacional e Cursos de Excelência (Conceito 5 ENAMED). Gap: {(media_top5-media_ies)*100:+.1f} pp."), 0, 'L')
 
+    # --- SEÇÃO 2: POSICIONAMENTO ---
+    # Aqui ganhamos espaço reduzindo a altura das imagens (Ranking)
+    
     pdf.set_y(pdf.get_y() + 5); pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 14); pdf.set_x(15)
     pdf.cell(0, 8, sanitizar_texto('2. Posicionamento Competitivo'), 0, 1, 'L')
     
+    # Ranking Nacional
     pos_n, tot_n = rank_nac_info
     pdf.set_font('Helvetica', 'B', 9); pdf.set_text_color(*navy); pdf.set_x(15)
     lbl_n = f'2.1. Cenário Nacional - {pos_n}º de {tot_n} Instituições' if tot_n > 0 else '2.1. Cenário Nacional'
     pdf.cell(0, 5, sanitizar_texto(lbl_n), 0, 1, 'L')
+    
     y_img = pdf.get_y() + 1
+    h_chart = 70 
+    
     if fig_ranking_nac:
         try:
             tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False); tmp_name = tmp.name; tmp.close()
-            fig_ranking_nac.write_image(tmp_name, scale=2); pdf.image(tmp_name, x=15, y=y_img, w=180, h=75); os.remove(tmp_name)
+            fig_ranking_nac.write_image(tmp_name, scale=2)
+            pdf.image(tmp_name, x=15, y=y_img, w=180, h=h_chart); os.remove(tmp_name)
         except: pass
     
-    pdf.set_y(y_img + 75 + 8); pdf.set_x(15)
+    # Ranking Regional
+    pdf.set_y(y_img + h_chart + 5); pdf.set_x(15) # Espaçamento dinâmico
     pos_r, tot_r = rank_reg_info
     lbl_r = f'2.2. Cenário Regional ({uf})' if uf else '2.2. Cenário Regional'
     lbl_r_final = f'{lbl_r} - {pos_r}º de {tot_r} Instituições' if tot_r > 0 else lbl_r
     pdf.cell(0, 5, sanitizar_texto(lbl_r_final), 0, 1, 'L')
+    
     y_img = pdf.get_y() + 1
     if fig_ranking_reg:
         try:
             tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False); tmp_name = tmp.name; tmp.close()
-            fig_ranking_reg.write_image(tmp_name, scale=2); pdf.image(tmp_name, x=15, y=y_img, w=180, h=75); os.remove(tmp_name)
+            fig_ranking_reg.write_image(tmp_name, scale=2)
+            pdf.image(tmp_name, x=15, y=y_img, w=180, h=h_chart); os.remove(tmp_name)
         except: pass
 
     # ==============================================================================
