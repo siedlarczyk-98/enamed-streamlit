@@ -183,7 +183,7 @@ def gerar_pdf_teaser(ies_nome, municipio, uf, conceito, media_ies, media_nac, me
     pdf.set_xy(15, 19); pdf.set_font('Helvetica', 'B', 11)
     pdf.cell(0, 6, sanitizar_texto(f'IES: {ies_nome[:60]}'), 0, 1, 'L')
     pdf.set_xy(15, 25); pdf.set_font('Helvetica', '', 9)
-    pdf.cell(0, 6, sanitizar_texto(f"{municipio}/{uf}  |  Conceito: {conceito}"), 0, 1, 'L')
+    pdf.cell(0, 6, sanitizar_texto(f"{municipio}/{uf}  |  Conceito ENAMED: {conceito}"), 0, 1, 'L')
     
     path_logo = os.path.join(os.path.dirname(__file__), "logo_branca.png")
     if os.path.exists(path_logo): pdf.image(path_logo, x=165, y=10, w=30)
@@ -207,12 +207,11 @@ def gerar_pdf_teaser(ies_nome, municipio, uf, conceito, media_ies, media_nac, me
     pdf.set_font('Helvetica', 'B', 18)
     pdf.cell(w_c, 8, f"{media_top5:.1%}", 0, 2, 'C')
     pdf.set_xy(15, y_c+h_c+2); pdf.set_font('Helvetica', 'I', 7); pdf.set_text_color(100)
-    pdf.multi_cell(180, 3, sanitizar_texto(f"Comparativo da média de acertos vs Média Nacional e Cursos de Excelência (Conceito 5 ENAMED). Gap: {(media_top5-media_ies)*100:+.1f} pp."), 0, 'L')
+    pdf.multi_cell(180, 3, sanitizar_texto(f"Comparativo da média de acertos de alunos vs Média Nacional e Cursos de Excelência (Conceito 5 ENAMED). Gap: {(media_top5-media_ies)*100:+.1f} pp."), 0, 'L')
 
     pdf.set_y(pdf.get_y() + 5); pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 14); pdf.set_x(15)
     pdf.cell(0, 8, sanitizar_texto('2. Posicionamento Competitivo'), 0, 1, 'L')
     
-    # Gráfico Nacional
     pos_n, tot_n = rank_nac_info
     pdf.set_font('Helvetica', 'B', 9); pdf.set_text_color(*navy); pdf.set_x(15)
     lbl_n = f'2.1. Cenário Nacional - {pos_n}º de {tot_n} Instituições' if tot_n > 0 else '2.1. Cenário Nacional'
@@ -224,7 +223,6 @@ def gerar_pdf_teaser(ies_nome, municipio, uf, conceito, media_ies, media_nac, me
             fig_ranking_nac.write_image(tmp_name, scale=2); pdf.image(tmp_name, x=15, y=y_img, w=180, h=75); os.remove(tmp_name)
         except: pass
     
-    # Gráfico Regional
     pdf.set_y(y_img + 75 + 8); pdf.set_x(15)
     pos_r, tot_r = rank_reg_info
     lbl_r = f'2.2. Cenário Regional ({uf})' if uf else '2.2. Cenário Regional'
@@ -241,11 +239,18 @@ def gerar_pdf_teaser(ies_nome, municipio, uf, conceito, media_ies, media_nac, me
     # PÁGINA 2
     # ==============================================================================
     
-    pdf.add_page(); pdf.set_y(25)
+    pdf.add_page()
+    # 1. MARGEM SUPERIOR REDUZIDA (De 25 para 15) para ganhar espaço
+    pdf.set_y(15)
     
-    def desenhar_tabela_5_colunas(titulo, df_dados, cor_gap_rgb, aplicar_blur=False):
-        pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 14); pdf.set_x(15)
-        pdf.cell(0, 8, sanitizar_texto(titulo), 0, 1, 'L'); pdf.ln(1)
+    def desenhar_tabela_visual(titulo, df_dados, cor_tema_rgb, aplicar_blur=False):
+        y_atual = pdf.get_y()
+        pdf.set_fill_color(*cor_tema_rgb)
+        pdf.rect(15, y_atual, 1.5, 8, 'F') 
+        
+        pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 14); pdf.set_x(18)
+        pdf.cell(0, 8, sanitizar_texto(titulo), 0, 1, 'L')
+        pdf.ln(2)
         
         cols = [28, 37, 75, 20, 20]
         headers = ["Grande Área", "Subespecialidade", "Diagnóstico", "Média", "Gap"]
@@ -253,92 +258,283 @@ def gerar_pdf_teaser(ies_nome, municipio, uf, conceito, media_ies, media_nac, me
         pdf.set_fill_color(*navy); pdf.set_text_color(255); pdf.set_font('Helvetica', 'B', 8); pdf.set_x(15)
         for i, h in enumerate(headers):
             align = 'C' if i >= 3 else 'L'
-            pdf.cell(cols[i], 6, sanitizar_texto(h), 0, 0, align, 1)
+            pdf.cell(cols[i], 7, sanitizar_texto(h), 0, 0, align, 1)
         pdf.ln()
         
-        pdf.set_text_color(0); pdf.set_font('Helvetica', '', 7); fill = False
+        pdf.set_font('Helvetica', '', 7)
         y_blur_start = 0 
         
         if df_dados.empty:
-            pdf.set_x(15); pdf.cell(180, 6, "Sem dados.", 1, 1, 'C')
+            pdf.set_text_color(0); pdf.set_x(15); pdf.cell(180, 8, "Sem dados.", 1, 1, 'C')
         else:
             for idx, (_, r) in enumerate(df_dados.iterrows()):
-                pdf.set_x(15); pdf.set_fill_color(245, 245, 245)
+                pdf.set_x(15)
                 blur_nesta_linha = aplicar_blur and (idx > 0)
                 
                 if blur_nesta_linha and y_blur_start == 0:
                     y_blur_start = pdf.get_y()
                 
                 if blur_nesta_linha:
-                    # Tarjas Cinzas Mais Leves
-                    pdf.set_fill_color(230, 230, 230)
+                    pdf.set_fill_color(235, 235, 235)
+                    pdf.rect(15, pdf.get_y(), 180, 6, 'F') 
+                    pdf.set_fill_color(210, 210, 210)
                     for w in cols:
-                        x_curr, y_curr = pdf.get_x(), pdf.get_y()
-                        pdf.rect(x_curr + 0.5, y_curr + 1.5, w - 1, 2.5, 'F')
-                        pdf.cell(w, 5, "", 0, 0)
+                        x_curr = pdf.get_x()
+                        pdf.rect(x_curr + 1, pdf.get_y() + 1.5, w - 2, 3, 'F')
+                        pdf.cell(w, 6, "", 0, 0)
                     pdf.ln()
                 else:
+                    if idx % 2 == 0: pdf.set_fill_color(255, 255, 255)
+                    else: pdf.set_fill_color(248, 248, 248)
+                    x_inicial = pdf.get_x(); y_inicial = pdf.get_y()
+                    pdf.rect(x_inicial, y_inicial, 180, 6, 'F')
+                    
+                    pdf.set_text_color(50, 50, 50)
                     t1 = (r['GRANDE_AREA'][:18] + '..') if len(r['GRANDE_AREA']) > 18 else r['GRANDE_AREA']
                     t2 = (r['SUBESPECIALIDADE'][:24] + '..') if len(r['SUBESPECIALIDADE']) > 24 else r['SUBESPECIALIDADE']
                     t3 = (r['DIAGNOSTICO'][:55] + '..') if len(r['DIAGNOSTICO']) > 55 else r['DIAGNOSTICO']
-                    pdf.cell(cols[0], 5, sanitizar_texto(t1), 0, 0, 'L', fill)
-                    pdf.cell(cols[1], 5, sanitizar_texto(t2), 0, 0, 'L', fill)
-                    pdf.cell(cols[2], 5, sanitizar_texto(t3), 0, 0, 'L', fill)
-                    pdf.cell(cols[3], 5, f"{r['IES']:.1%}", 0, 0, 'C', fill)
-                    pdf.set_text_color(*cor_gap_rgb); pdf.set_font('Helvetica', 'B', 7)
-                    pdf.cell(cols[4], 5, f"{r['Diferença']:+.1f} pp", 0, 1, 'C', fill)
+                    
+                    pdf.cell(cols[0], 6, sanitizar_texto(t1), 0, 0, 'L')
+                    pdf.cell(cols[1], 6, sanitizar_texto(t2), 0, 0, 'L')
+                    pdf.cell(cols[2], 6, sanitizar_texto(t3), 0, 0, 'L')
+                    pdf.set_text_color(0); pdf.cell(cols[3], 6, f"{r['IES']:.1%}", 0, 0, 'C')
+                    
+                    x_gap = pdf.get_x(); y_gap = pdf.get_y()
+                    pdf.set_fill_color(*cor_tema_rgb)
+                    pdf.rect(x_gap + 2, y_gap + 1, 16, 4, 'F')
+                    pdf.set_text_color(255, 255, 255); pdf.set_font('Helvetica', 'B', 7)
+                    pdf.cell(cols[4], 6, f"{r['Diferença']:+.1f}", 0, 0, 'C')
+                    
+                    pdf.set_font('Helvetica', '', 7)
                     pdf.ln() 
-                
-                pdf.set_text_color(0); pdf.set_font('Helvetica', '', 7); fill = not fill
 
-        # --- NOVO DESIGN DO "PAYWALL" / CARTÃO DE BLOQUEIO ---
         if aplicar_blur and y_blur_start > 0:
-            altura_total_blur = (len(df_dados) - 1) * 5
-            
-            # Dimensões do Cartão Flutuante
-            card_w = 120
-            card_h = 16
-            card_x = (210 - card_w) / 2 # Centraliza na página
+            altura_total_blur = (len(df_dados) - 1) * 6
+            card_w = 120; card_h = 16
+            card_x = (210 - card_w) / 2
             card_y = y_blur_start + (altura_total_blur / 2) - (card_h / 2)
             
-            # 1. Sombra (Cinza deslocado)
             pdf.set_fill_color(200, 200, 200)
             pdf.rect(card_x + 1, card_y + 1, card_w, card_h, 'F')
-            
-            # 2. Cartão Branco (Fundo)
-            pdf.set_fill_color(255, 255, 255)
-            pdf.set_draw_color(*navy)
+            pdf.set_fill_color(255, 255, 255); pdf.set_draw_color(*navy)
             pdf.rect(card_x, card_y, card_w, card_h, 'DF')
             
-            # 3. Texto e Ícone
             pdf.set_xy(card_x, card_y + 3)
+            pdf.set_font('Helvetica', 'B', 8); pdf.set_text_color(*navy)
+            pdf.cell(card_w, 4, sanitizar_texto(" ANÁLISE COMPLETA DISPONÍVEL PARA SUA INSTITUIÇÃO"), 0, 2, 'C')
+            pdf.set_font('Helvetica', 'B', 9); pdf.set_text_color(*orange)
+            pdf.cell(card_w, 5, sanitizar_texto("Entre em contato com nossa equipe para desbloquear"), 0, 0, 'C')
             
-            # Linha 1: Título "Restrito" com ícone simulado [ ! ]
-            pdf.set_font('Helvetica', 'B', 8)
-            pdf.set_text_color(*navy)
-            pdf.cell(card_w, 4, sanitizar_texto("ANÁLISE COMPLETA DISPONÍVEL PARA SUA IES"), 0, 2, 'C')
-            
-            # Linha 2: Chamada para Ação em Laranja
-            pdf.set_font('Helvetica', 'B', 9)
-            pdf.set_text_color(*orange)
-            pdf.cell(card_w, 5, sanitizar_texto("Entre em contato com a Equipe Paciente 360 para desbloquear"), 0, 0, 'C')
-            
-            # Restaura cursor para não quebrar fluxo
             pdf.set_y(y_blur_start + altura_total_blur)
         
-        pdf.ln(3)
+        # 2. ESPAÇAMENTO ENTRE TABELAS AUMENTADO (De 3 para 8)
+        pdf.ln(8)
 
-    desenhar_tabela_5_colunas("3. Top 5 temas de pior desempenho", top_gaps, (200, 0, 0), aplicar_blur=False)
-    desenhar_tabela_5_colunas("4. Top 5 temas de melhor desempenho", top_strengths, (0, 128, 0), aplicar_blur=True)
+    desenhar_tabela_visual("3. Top 5 temas de pior desempenho", top_gaps, (200, 0, 0), aplicar_blur=False)
+    desenhar_tabela_visual("4. Top 5 temas de melhor desempenho", top_strengths, (0, 128, 0), aplicar_blur=True)
     
-    # --- RODAPÉ ---
-    y_b = 257; pdf.set_y(y_b); pdf.set_fill_color(*navy); pdf.rect(0, y_b, 210, 40, 'F')
-    pdf.set_y(y_b+8); pdf.set_font('Helvetica', 'B', 12); pdf.set_text_color(255)
-    pdf.cell(0, 6, sanitizar_texto("TRANSFORME DADOS EM ESTRATÉGIA"), 0, 1, 'C')
-    pdf.set_y(y_b+15); pdf.set_font('Helvetica', 'B', 11); pdf.set_text_color(*orange)
-    pdf.cell(0, 10, sanitizar_texto(">> Desbloqueie o relatório completo em www.paciente360.com.br <<"), 0, 1, 'C')
+    # ==============================================================================
+    # ÁREA DE APRESENTAÇÃO
+    # ==============================================================================
+    
+    y_plat = pdf.get_y() + 2 # Respiro menor aqui
+    
+    # 4. TRAVA DE SEGURANÇA: Calcula o fundo apenas até onde o Box Final vai começar (232)
+    # Assim evita que o fundo cinza vaze por baixo do azul
+    y_box_final = 205 
+    h_restante = y_box_final - y_plat 
+    
+    if h_restante > 30:
+        pdf.set_fill_color(252, 252, 252)
+        pdf.rect(0, y_plat, 210, h_restante, 'F')
+        
+        pdf.set_y(y_plat + 6)
+        
+        # --- COLUNA ESQUERDA ---
+        pdf.set_x(15)
+        pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 14)
+        pdf.cell(90, 8, sanitizar_texto("      Inteligência para o dia a dia"), 0, 1, 'L')
+        
+        pdf.ln(2)
+        pdf.set_x(15)
+        pdf.set_font('Helvetica', '', 9); pdf.set_text_color(60, 60, 60)
+        intro = (
+            "Não basta identificar os erros: é preciso corrigi-los na prática. "
+            "O Paciente 360 conecta aprendizagem, prática e avaliação."
+        )
+        pdf.multi_cell(90, 4.5, sanitizar_texto(intro))
+        pdf.ln(4)
+
+        # --- LISTA DE BENEFÍCIOS ---
+        beneficios = [
+            ("Feedback imediato", "para o estudante"),
+            ("Apresentação interativa", "em sala de aula"),
+            ("Raciocínio Clínico", "estruturado e guiado"),
+            ("Matriz Curricular", "alinhada aos casos"),
+            ("Correção por IA", "em avaliação individual")
+        ]
+
+        for destaque, resto in beneficios:
+            pdf.set_x(15)
+            x_check = pdf.get_x()
+            
+            # 3. CHECKMARK / BULLET MAIS ALTO (Removemos o +1, agora é direto no Y)
+            y_check = pdf.get_y() # Subiu um pouco
+            
+            pdf.set_draw_color(*orange)
+            pdf.set_line_width(0.7)
+            pdf.line(x_check, y_check + 1.5, x_check + 1.2, y_check + 3)
+            pdf.line(x_check + 1.2, y_check + 3, x_check + 3.5, y_check)
+            
+            # Texto
+            pdf.set_x(x_check + 5)
+            pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 8)
+            pdf.write(5, sanitizar_texto(destaque)) 
+            
+            pdf.set_text_color(80, 80, 80); pdf.set_font('Helvetica', '', 8)
+            pdf.write(5, sanitizar_texto(f" {resto}"))
+            pdf.ln(6) 
+
+# --- COLUNA DIREITA: IMAGEM + LEGENDA (TEXTO CENTRALIZADO NA BARRA) ---
+        x_img = 115
+        y_img = y_plat + 6
+        w_img = 80
+        
+        path_img_simulacao = "cenario_paciente.png" 
+        if os.path.exists(path_img_simulacao):
+            h_img = 45 
+            pdf.image(path_img_simulacao, x=x_img, y=y_img, w=w_img, h=h_img)
+            
+            # Posição Y inicial da legenda
+            y_legenda = y_img + h_img + 3
+            
+            # Altura total da barra lateral (Definimos como 12mm)
+            h_bar = 12
+            
+            # 1. Desenha a Barra Laranja
+            pdf.set_fill_color(*orange)
+            pdf.rect(x_img, y_legenda, 1, h_bar, 'F')
+            
+            # 2. Centralização Vertical do Texto
+            # O texto tem aprox. 2 linhas. Altura da linha = 3.5mm. Total Texto = 7mm.
+            # Espaço livre = 12mm (barra) - 7mm (texto) = 5mm.
+            # Offset (Margem superior) = 5mm / 2 = 2.5mm.
+            y_texto_centralizado = y_legenda + 2.5
+            
+            pdf.set_xy(x_img + 3, y_texto_centralizado)
+            pdf.set_font('Helvetica', 'I', 8); pdf.set_text_color(80, 80, 80)
+            
+            msg_legenda = (
+                "Da análise de dados à prática: pacientes padronizados "
+                "para correção imediata dos gaps identificados."
+            )
+            # Mantive alinhado à Esquerda ('L') pois combina mais com a barra lateral
+            pdf.multi_cell(w_img - 3, 3.5, sanitizar_texto(msg_legenda), 0, 'L')
+            
+        else:
+            pdf.set_fill_color(220, 220, 220)
+            pdf.rect(x_img, y_img, w_img, 45, 'F')
+            pdf.set_xy(x_img, y_img + 20)
+            pdf.cell(w_img, 5, "Imagem não encontrada", 0, 1, 'C')
+# ==============================================================================
+    # BOX FINAL: BIG NUMBERS + CLAIM (VERSÃO CLEAN / FUNDO BRANCO)
+    # ==============================================================================
+    
+    # Posição Y (Mantemos a mesma altura para diagramação)
+    y_box = 205 
+    
+    # [OPCIONAL] Uma linha fina cinza no topo para separar da seção anterior
+    pdf.set_draw_color(*orange); pdf.set_line_width(0.2)
+    pdf.line(15, y_box, 195, y_box)
+
+    # --- LADO ESQUERDO (85%) ---
+    
+    # 1. Número 85% (Agora em NAVY para contrastar com o branco)
+    pdf.set_xy(15, y_box + 6) 
+    pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 40) # Aumentei um pouco fonte
+    pdf.cell(35, 14, "85%", 0, 0, 'C') 
+    
+    # 2. Legenda "DAS QUESTÕES" (Mantém Laranja)
+    pdf.set_xy(15, y_box + 20)
+    pdf.set_font('Helvetica', 'B', 9); pdf.set_text_color(*orange)
+    pdf.cell(35, 6, "DAS QUESTÕES", 0, 0, 'C')
+
+    # 3. Texto Explicativo (Agora em CINZA ESCURO)
+    pdf.set_xy(55, y_box + 8) 
+    pdf.set_font('Helvetica', '', 10); pdf.set_text_color(60, 60, 60) # Cinza escuro
+    msg_85 = "Do ENAMED 2025\nexigem raciocínio clínico\ne não memorização."
+    pdf.multi_cell(45, 4.5, sanitizar_texto(msg_85), align='L')
+
+    # --- LINHA DIVISÓRIA CENTRAL (Agora em CINZA CLARO) ---
+    pdf.set_draw_color(200, 200, 200); pdf.set_line_width(0.5)
+    pdf.line(105, y_box + 5, 105, y_box + 30)
+
+   # --- LADO DIREITO (80%) ---
+    
+    # 1. Número 80% (Agora em NAVY)
+    pdf.set_xy(110, y_box + 6)
+    pdf.set_text_color(*navy); pdf.set_font('Helvetica', 'B', 40)
+    pdf.cell(35, 14, "80%", 0, 0, 'C') 
+    
+    # 2. Legenda "DO PORTFÓLIO" (Mantém Laranja)
+    pdf.set_xy(110, y_box + 20)
+    pdf.set_font('Helvetica', 'B', 9); pdf.set_text_color(*orange)
+    pdf.cell(35, 6, "DOS CASOS", 0, 0, 'C')
+
+    # 3. Texto Explicativo (Agora em CINZA ESCURO)
+    pdf.set_xy(150, y_box + 8)
+    pdf.set_font('Helvetica', '', 10); pdf.set_text_color(60, 60, 60)
+    msg_80 = "Cobrados no ENAMED\n2025 já estão prontos na\nplataforma Paciente 360."
+    pdf.multi_cell(45, 4.5, sanitizar_texto(msg_80), align='L')
+
+    pdf.set_draw_color(*orange); pdf.set_line_width(0.2)
+    pdf.line(15, y_box + 36, 195, y_box + 36)
+
+# ==============================================================================
+    # IMAGOTIPO NAVY (LOGO + FRASE)
+    # ==============================================================================
+    
+    # 1. Desenha o Logo
+    y_logo = 252  # Subi um pouquinho (era 255) para dar espaço para a frase
+    w_logo = 70   
+    x_logo = (210 - w_logo) / 2 
+    
+    path_logo_navy = "logo_navy.png" 
+    
+    if os.path.exists(path_logo_navy):
+        pdf.image(path_logo_navy, x=x_logo, y=y_logo, w=w_logo)
+    else:
+        # Placeholder se não tiver imagem
+        pdf.set_xy(x_logo, y_logo)
+        pdf.set_draw_color(200); pdf.set_line_width(0.5); pdf.set_dash_pattern(1, 1)
+        pdf.rect(x_logo, y_logo, w_logo, 15)
+        pdf.set_dash_pattern()
+
+    # 2. Nova Frase (Tagline) Abaixo do Logo
+    # Logo tem ~15mm de altura visual. Y=252 + 15 = 267.
+    # Vamos colocar a frase em Y=270 para ter um respiro.
+    
+    y_frase = y_logo + 22 # Ajuste conforme a altura real do seu logo
+    pdf.set_xy(0, y_frase)
+    
+    # Configuração da Fonte (Navy, Itálico ou Normal, tamanho médio)
+    pdf.set_text_color(*navy)
+    pdf.set_font('Helvetica', 'B', 10) # B = Bold (Negrito). Use 'I' para Itálico se preferir.
+    
+    # A FRASE QUE VOCÊ QUER INSERIR:
+    frase_abaixo_logo = "O saber médico na era da inovação" 
+    
+    pdf.cell(210, 6, sanitizar_texto(frase_abaixo_logo), 0, 0, 'C')
+
+
+    # --- RODAPÉ MINIMALISTA (MANTIDO) ---
+    y_footer = 285
+    pdf.set_y(y_footer)
+    pdf.set_draw_color(*orange); pdf.set_line_width(0.5)
+    pdf.line(15, y_footer, 195, y_footer)
     
     return pdf.output(dest='S').encode('latin-1', 'replace')
+
 # ==========================================
 # 2. CARREGAMENTO
 # ==========================================
